@@ -1,0 +1,9 @@
+numpy==1.23.5
+opencv-python
+pyserial
+shapely
+ultralytics
+PyYAML
+torch
+torchvision
+torchaudio

@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro"  name="tracked_mower">
+
+    <xacro:include filename="mower_core.xacro" />
+
+    <xacro:include filename="mower_gazebo.xacro" />
+
+</robot>

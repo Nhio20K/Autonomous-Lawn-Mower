@@ -1,0 +1,83 @@
+# Simulation EKF Configuration (Standard ROS REP 103 Axes)
+# Optimized for Gazebo where X=Forward, Y=Left, Z=Up
+
+ekf_filter_node_odom:
+  ros__parameters:
+    use_sim_time: true
+    frequency: 30.0
+    sensor_timeout: 0.1
+    two_d_mode: true
+    publish_tf: true
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: odom
+
+    # Gazebo Diff Drive Odom
+    odom0: /odom_raw
+    odom0_config: [false, false, false,
+                   false, false, false,
+                   true,  true,  false, 
+                   false, false, true,
+                   false, false, false]
+    odom0_queue_size: 10
+
+    # Gazebo IMU (Standard Axes)
+    imu0: /camera/camera/imu 
+    imu0_config: [false, false, false,
+                  false, false, false,
+                  false, false, false,
+                  false, false, true,  # 🟢 Angular Velocity Z is Yaw
+                  false, false, false]
+    imu0_remove_gravitational_acceleration: true
+
+ekf_filter_node_map:
+  ros__parameters:
+    use_sim_time: true
+    frequency: 30.0
+    sensor_timeout: 0.1
+    two_d_mode: true
+    publish_tf: true
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: map
+
+    odom0: /odom_raw
+    odom0_config: [false, false, false,
+                   false, false, false,
+                   true,  true,  false,
+                   false, false, true,
+                   false, false, false]
+    
+    imu0: /camera/camera/imu 
+    imu0_config: [false, false, false,
+                  false, false, false,
+                  false, false, false,
+                  false, false, true,
+                  false, false, false]
+    imu0_relative: true 
+
+    # ✅ Ground Truth Odometry (แทน GPS)
+    # อ่านตำแหน่งจริงจาก Gazebo Physics ส่งเข้า EKF โดยตรง
+    # ใน Hardware จริง: เปลี่ยนเป็น /odometry/gps จาก navsat_transform
+    odom1: /odometry/gps
+    odom1_config: [true,  true,  false,
+                   false, false, false,
+                   false, false, false,
+                   false, false, false,
+                   false, false, false]
+    odom1_queue_size: 10
+    odom1_pose_rejection_threshold: 2.0
+
+navsat_transform_node:
+  ros__parameters:
+    use_sim_time: true
+    frequency: 10.0
+    magnetic_declination_radians: 0.0
+    yaw_offset: 0.0 
+    zero_altitude: true
+    broadcast_cartesian_transform: false
+    publish_filtered_gps: true
+    use_odometry_yaw: true
+    wait_for_datum: false

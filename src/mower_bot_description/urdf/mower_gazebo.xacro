@@ -1,0 +1,136 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+
+    <gazebo reference="left_track_visual"><material>Gazebo/DarkGrey</material></gazebo>
+    <gazebo reference="right_track_visual"><material>Gazebo/DarkGrey</material></gazebo>
+    <gazebo reference="lidar_link"><material>Gazebo/Orange</material></gazebo>
+
+    <gazebo reference="base_link">
+        <material>Gazebo/DarkGrey</material>
+    </gazebo>
+
+    <gazebo>
+        <plugin name="diff_drive" filename="libgazebo_ros_diff_drive.so">
+            <ros>
+                <namespace>/</namespace>
+                <remapping>odom:=odom_raw</remapping>
+            </ros>
+            <num_wheel_pairs>3</num_wheel_pairs>
+            
+            <left_joint>front_left_wheel_joint</left_joint>
+            <left_joint>mid_left_wheel_joint</left_joint>
+            <left_joint>rear_left_wheel_joint</left_joint>
+            <right_joint>front_right_wheel_joint</right_joint>
+            <right_joint>mid_right_wheel_joint</right_joint>
+            <right_joint>rear_right_wheel_joint</right_joint>
+
+            <wheel_separation>0.6</wheel_separation>
+            <wheel_diameter>0.1</wheel_diameter>
+            <max_wheel_torque>100</max_wheel_torque>
+            <max_wheel_acceleration>2.0</max_wheel_acceleration>
+
+            <publish_odom>true</publish_odom>
+            <publish_odom_tf>true</publish_odom_tf>
+            <publish_wheel_tf>false</publish_wheel_tf>
+            <odometry_frame>odom</odometry_frame>
+            <robot_base_frame>base_footprint</robot_base_frame>
+            <command_topic>cmd_vel_filtered</command_topic>
+        </plugin>
+
+        <plugin name="joint_state" filename="libgazebo_ros_joint_state_publisher.so">
+            <ros><remapping>~/out:=joint_states</remapping></ros>
+            <update_rate>30</update_rate>
+            <joint_name>front_left_wheel_joint</joint_name>
+            <joint_name>mid_left_wheel_joint</joint_name>
+            <joint_name>rear_left_wheel_joint</joint_name>
+            <joint_name>front_right_wheel_joint</joint_name>
+            <joint_name>mid_right_wheel_joint</joint_name>
+            <joint_name>rear_right_wheel_joint</joint_name>
+        </plugin>
+    </gazebo>
+
+
+    <gazebo reference="imu_link">
+        <sensor name="imu_sensor" type="imu">
+            <plugin filename="libgazebo_ros_imu_sensor.so" name="imu_plugin">
+                <ros><remapping>~/out:=/camera/camera/imu</remapping></ros>
+                <frame_name>imu_link</frame_name>
+            </plugin>
+            <always_on>true</always_on>
+            <update_rate>100</update_rate>
+        </sensor>
+    </gazebo>
+
+    <gazebo reference="laser_frame">
+        <sensor name="lidar" type="ray">
+            <pose> 0 0 0 0 0 0 </pose>
+            <always_on>true</always_on>
+            <visualize>false</visualize><!-- เปิด/ปิดเส้นlaser lidar--> <update_rate>10</update_rate>
+            
+            <ray>
+                <scan>
+                    <horizontal>
+                        <samples>360</samples>
+                        <min_angle>-3.14</min_angle>
+                        <max_angle>3.14</max_angle>
+                    </horizontal>
+                </scan>
+                <range>
+                    <min>0.1</min> <max>12.0</max>
+                </range>
+            </ray>
+
+            <plugin name="laser_controller" filename="libgazebo_ros_ray_sensor.so">
+                <ros><remapping>~/out:=scan</remapping></ros>
+                <output_type>sensor_msgs/LaserScan</output_type>
+                <frame_name>laser_frame</frame_name>
+            </plugin>
+        </sensor>
+    </gazebo>
+
+    <gazebo reference="camera_link">
+        <sensor name="camera" type="depth">
+            <visualize>true</visualize>
+            <update_rate>30.0</update_rate>
+            <camera name="rs_camera">
+                <horizontal_fov>1.047</horizontal_fov>
+                <image><width>640</width><height>480</height><format>R8G8B8</format></image>
+                <clip><near>0.05</near><far>3</far></clip>
+            </camera>
+            <plugin name="camera_controller" filename="libgazebo_ros_camera.so">
+                <frame_name>camera_depth_frame</frame_name>
+                <min_depth>0.1</min_depth>
+                <max_depth>10.0</max_depth>
+            </plugin>
+        </sensor>
+    </gazebo>
+
+    <gazebo reference="gps_link">
+        <sensor name="gps_sensor" type="gps">
+            <always_on>true</always_on>
+            <update_rate>1.0</update_rate>
+            <plugin name="gps_controller" filename="libgazebo_ros_gps_sensor.so">
+                <ros><remapping>~/out:=fix</remapping></ros>
+                <frame_name>gps_link</frame_name>
+            </plugin>
+        </sensor>
+    </gazebo>
+
+    <!-- ✅ Ground Truth Odometry (แทน GPS จำลอง)
+         P3D plugin อ่านตำแหน่งจริงจาก Gazebo Physics โดยตรง
+         เหมือน GPS สมบูรณ์แบบที่ไม่มี drift - ป้อนเข้า EKF เพื่อแก้ไข odometry -->
+    <gazebo>
+        <plugin name="ground_truth_odom" filename="libgazebo_ros_p3d.so">
+            <ros>
+                <remapping>odom:=/ground_truth_odom</remapping>
+            </ros>
+            <update_rate>10.0</update_rate>
+            <body_name>base_link</body_name>
+            <frame_name>map</frame_name>
+            <xyz_offset>0 0 0</xyz_offset>
+            <rpy_offset>0 0 0</rpy_offset>
+            <gaussian_noise>0.005</gaussian_noise>
+        </plugin>
+    </gazebo>
+
+</robot>

@@ -1,0 +1,28 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <world name="default">
+    <include><uri>model://sun</uri></include>
+    <include><uri>model://ground_plane</uri></include>
+
+    <model name="test_mesh_model">
+      <pose>0 0 1 0 0 0</pose> <static>true</static>
+      <link name="link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>file://~/ros2_ws/src/mower_bot_description/meshes/Car2.dae</uri>
+              
+              <scale>0.001 0.001 0.001</scale>
+            </mesh>
+          </geometry>
+          <material>
+            <script>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+              <name>Gazebo/Red</name>
+            </script>
+          </material>
+        </visual>
+      </link>
+    </model>
+  </world>
+</sdf>

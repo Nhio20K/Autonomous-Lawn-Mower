@@ -1,0 +1,19 @@
+# Configuration for twist_mux
+# ปรับโครงสร้างใหม่ให้เป็นแบบ Map of Maps (มาตรฐาน Humble)
+twist_mux:
+  ros__parameters:
+    topics:
+      teleop:
+        topic: "cmd_vel_teleop"
+        timeout: 0.5
+        priority: 10
+      navigation:
+        topic: "cmd_vel_nav_smoothed"
+        timeout: 0.5
+        priority: 5
+
+    locks:
+      e_stop:
+        topic: "e_stop_lock"
+        timeout: 0.0
+        priority: 100

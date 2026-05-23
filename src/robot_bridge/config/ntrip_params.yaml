@@ -1,0 +1,9 @@
+ntrip_client:
+  ros__parameters:
+    ip: "110.78.0.54"
+    port: 2116
+    mountpoint: "VRS_RTCM32"
+    user: "1209301130285"
+    password: "KM78"
+    serial_port: "/dev/serial/by-id/usb-FTDI_USB__-__Serial-if00-port0"
+    baudrate: 460800

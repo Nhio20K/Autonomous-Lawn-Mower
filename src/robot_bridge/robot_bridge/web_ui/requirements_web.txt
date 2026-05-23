@@ -1,0 +1,20 @@
+# ROS 2 Mower Web Dashboard Requirements
+
+To run the Web UI, the following ROS 2 packages and dependencies must be installed on the robot or the simulation host.
+
+## System Packages (Apt)
+- ros-humble-rosbridge-suite
+- ros-humble-web-video-server
+- ros-humble-async-web-server-cpp
+- ros-humble-tf2-web-republisher
+
+## Python Packages (Pip)
+- pyserial
+- numpy (for vision nodes)
+- opencv-python
+
+## Network Ports
+The following ports must be open and available:
+- 9090: ROSBridge WebSocket
+- 8080: Web Video Server (MJPEG Streams)
+- 8000: Web Dashboard (HTTP Server)

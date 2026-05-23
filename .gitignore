@@ -1,0 +1,54 @@
+# ROS2 folders
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+
+# C++ / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Large files (Optional but recommended to keep out of GitHub)
+# ถ้าอยากเอา YOLO ขึ้น GitHub ด้วยให้คอมเมนต์บรรทัดล่างนี้ออกครับ
+# แต่ GitHub มี limit 100MB ต่อไฟล์
+# *.pt
+
+# Backup files
+*.backup_*
+*.zip
+*.tar.gz
+
+# Workspace sanitization extras
+reports/
+*.log
+.vscode/
+
+graphify-out/
+*.gv
+*.pdf
+*.html
+.git.backup/
+.agents/

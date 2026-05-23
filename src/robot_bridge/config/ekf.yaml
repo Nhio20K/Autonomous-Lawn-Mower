@@ -1,0 +1,127 @@
+# Dual EKF Configuration for Odom + IMU + RTK GPS
+
+# 1. Local EKF (Odom -> Base Link)
+# หน้าที่: ทำให้รถขยับสมูทที่สุดบนแผนที่ระยะใกล้ โดยไม่สนพิกัดโลก
+ekf_filter_node_odom:
+  ros__parameters:
+    use_sim_time: false
+    frequency: 10.0
+    sensor_timeout: 0.1
+    two_d_mode: true
+    publish_tf: true
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: odom
+
+    odom0: /odom_raw
+    odom0_config: [false, false, false,
+                   false, false, false,
+                   true,  true,  false, # 🟢 VX และ VY ( VY = 0 ช่วยดึงค่า Drift)
+                   false, false, false, # 🔴 ปิด Yaw จากล้อ 100%
+                   false, false, false]
+    odom0_queue_size: 10
+
+    imu0: /imu/data
+    imu0_config: [false, false, false,
+                  false, false, true,  # 🟢 เปิด Yaw (องศาจริง)
+                  false, false, false,
+                  false, false, true,  # 🟢 Angular Velocity Z
+                  true,  false, false] # 🟢 Accel X
+    imu0_remove_gravitational_acceleration: false
+
+    # 🎯 แผงควบคุมความเชื่อมั่น IMU (Covariance Override)
+    # ขนาด 6x6 (36 ตัว): [X, Y, Z, Roll, Pitch, Yaw]
+    # **สำคัญ:** กล้องวางตะแคง -> Pitch (ลำดับที่ 28) คือ Yaw ของหุ่นครับ
+    # ยิ่งตัวเลข "น้อย" = ยิ่งเชื่อมั่นสูง (Weight สูง)
+    imu0_pose_covariance: [0.01, 0.0, 0.0, 0.0, 0.0, 0.0,
+                           0.0, 0.01, 0.0, 0.0, 0.0, 0.0,
+                           0.0, 0.0, 0.01, 0.0, 0.0, 0.0,
+                           0.0, 0.0, 0.0, 0.01, 0.0, 0.0,
+                           0.0, 0.0, 0.0, 0.0, 0.01, 0.0,
+                           0.0, 0.0, 0.0, 0.0, 0.0, 0.01]
+
+    imu0_twist_covariance: [0.01, 0.0, 0.0, 0.0, 0.0, 0.0,
+                            0.0, 0.01, 0.0, 0.0, 0.0, 0.0,
+                            0.0, 0.0, 0.01, 0.0, 0.0, 0.0,
+                            0.0, 0.0, 0.0, 0.01, 0.0, 0.0,
+                            0.0, 0.0, 0.0, 0.0, 0.05, 0.0, # 🟢 28: V-Pitch (หุ่น Yaw) ตั้งให้แม่นสุดๆ
+                            0.0, 0.0, 0.0, 0.0, 0.0, 0.01]
+    
+    # Rejection Thresholds
+    imu0_linear_acceleration_rejection_threshold: 0.25
+    imu0_angular_velocity_rejection_threshold: 2.0
+
+# 2. Global EKF (Map -> Odom)
+# หน้าที่: ดูดค่า GPS มาครอบรอยล้อ เพื่อหาตำแหน่งที่แท้จริงระดับเซนติเมตรบนโลก
+ekf_filter_node_map:
+  ros__parameters:
+    use_sim_time: false
+    frequency: 10.0
+    sensor_timeout: 0.1
+    two_d_mode: true
+    publish_tf: true
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: map
+
+    odom0: /odom_raw
+    odom0_config: [false, false, false,
+                   false, false, false,
+                   true,  true,  false,
+                   false, false, true,
+                   false, false, false]
+    odom0_queue_size: 10
+
+    imu0: /imu/data
+    imu0_config: [false, false, false,
+                  false, false, true,  # 🟢 เปิด Yaw (องศาจริง)
+                  false, false, false,
+                  false, false, true,
+                  true,  false, false]
+    imu0_relative: false 
+    imu0_queue_size: 10
+    imu0_remove_gravitational_acceleration: false
+    
+    # 🛡️ บัฟเฟอร์สำหรับพิกัดโลก
+    imu0_linear_acceleration_rejection_threshold: 0.25
+    imu0_angular_velocity_rejection_threshold: 0.1
+
+    # สัญญาณพิกัดแกน X,Y ที่แปลงมาจากดาวเทียม RTK
+    odom1: /odometry/gps
+    odom1_config: [true,  true,  false, 
+                   false, false, false,
+                   false, false, false,
+                   false, false, false,
+                   false, false, false]
+    odom1_queue_size: 10
+    odom1_relative: false
+    odom1_differential: false
+    # 🛡️ ตัวดักสัญญาณกระโดด (ถ้า GPS วาร์ปเกิน 2 เมตรในครั้งเดียว ให้ตัดทิ้ง)
+    odom1_pose_rejection_threshold: 2.0
+
+    # 🎯 แผงจูนความเชื่อใจ GPS (ตั้งให้สูงมาก 50.0 เพื่อดัดนิสัยรถไหล)
+    odom1_pose_covariance: [50.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                            0.0, 50.0, 0.0, 0.0, 0.0, 0.0,
+                            0.0, 0.0, 50.0, 0.0, 0.0, 0.0,
+                            0.0, 0.0, 0.0, 0.1, 0.0, 0.0,
+                            0.0, 0.0, 0.0, 0.0, 0.1, 0.0,
+                            0.0, 0.0, 0.0, 0.0, 0.0, 0.1]
+
+# 3. GPS Transform Node
+# หน้าที่: แปลง Latitude/Longitude จาก NMEA ให้กลายเป็นพิกัด X, Y บนพื้นโลกแบน
+navsat_transform_node:
+  ros__parameters:
+    use_sim_time: false
+    frequency: 10.0
+    delay: 0.0
+    magnetic_declination_radians: 0.0
+    yaw_offset: 0.0 
+    zero_altitude: true
+    broadcast_cartesian_transform: true
+    publish_filtered_gps: true
+    use_odometry_yaw: false
+    # ✅ รอรับ Datum จาก auto_datum_node (ผ่าน /datum service)
+    # ไม่ต้องแก้ไฟล์นี้เมื่อย้ายสนาม → auto_datum_node จะอ่านจาก lawn_geofence.yaml เอง
+    wait_for_datum: true

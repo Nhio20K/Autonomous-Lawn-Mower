@@ -1,0 +1,128 @@
+#include <Arduino.h>
+#include "imu_control.h"    // ใช้ตัวใหม่ที่เราทำ Filter ไว้
+#include "motor_control.h"
+#include "Encoder.h"
+
+String inputBuffer = "";
+bool emergencyMode = false;
+uint32_t last_send = 0;
+uint32_t last_cmd_received = 0;
+const uint32_t HEARTBEAT_TIMEOUT = 1000; 
+
+// --- ฟังก์ชันประมวลผลคำสั่งจาก Raspberry Pi 5 ---
+void processCommand(String cmd) {
+    cmd.trim();
+    if (cmd.length() == 0) return;
+
+    int first = cmd.indexOf(',');
+    int second = cmd.indexOf(',', first + 1);
+    int third = cmd.indexOf(',', second + 1);
+
+    if (first == -1) return;
+    String header = cmd.substring(0, first);
+    header.toUpperCase();
+
+    // คำสั่งฉุกเฉิน (E,state,chk)
+    if (header == "E" && second != -1) {
+        int state = cmd.substring(first + 1, second).toInt();
+        int chk = cmd.substring(second + 1).toInt();
+        if ((state + 69) == chk) {
+            emergencyMode = (state == 1);
+            if (emergencyMode) stop();
+            last_cmd_received = millis();
+        }
+        return;
+    }
+
+    // คำสั่งควบคุมการเคลื่อนที่ (C,dir,speed,chk)
+    if (header == "C" && third != -1) {
+        String dirStr = cmd.substring(first + 1, second);
+        dirStr.toUpperCase();
+        char dirChar = dirStr[0];
+        int speed = cmd.substring(second + 1, third).toInt();
+        int receivedChk = cmd.substring(third + 1).toInt();
+
+        if (((int)dirChar + speed) == receivedChk) {
+            if (emergencyMode) { stop(); return; }
+            speed = constrain(speed, 0, 100);
+            if (dirChar == 'F') moveForward(speed);
+            else if (dirChar == 'B') moveBackward(speed);
+            else if (dirChar == 'L') turnLeft(speed);
+            else if (dirChar == 'R') turnRight(speed);
+            else if (dirChar == 'S') stop();
+            last_cmd_received = millis(); 
+        }
+    }
+}
+
+void setup() {
+    // ปิด JTAG เพื่อใช้ขา PA15, PB3, PB4 ได้ (ถ้าจำเป็น)
+    __HAL_RCC_AFIO_CLK_ENABLE(); 
+    __HAL_AFIO_REMAP_SWJ_NOJTAG(); 
+
+    pinMode(PB14, INPUT_PULLUP); // สวิตช์เลือกโหมด Manual/Auto
+    pinMode(PC14, OUTPUT);       // ไฟสถานะ 1
+    pinMode(PC13, OUTPUT);       // ไฟสถานะ 2 (On-board LED)
+
+    Serial1.begin(115200); 
+
+    initIMU();        // เริ่มทำงาน MPU6050 + Calibration
+    initMotors();     // เริ่มทำงาน PWM Motor Driver
+    setupEncoders();  // เริ่มทำงาน Interrupt Encoder
+    
+    last_cmd_received = millis();
+}
+
+void loop() {
+    // 1. รับคำสั่งจาก Serial
+    while (Serial1.available()) {
+        char c = Serial1.read();
+        if (c == '\n' || c == '\r') {
+            if (inputBuffer.length() > 0) {
+                processCommand(inputBuffer);
+                inputBuffer = "";
+            }
+        } else {
+            inputBuffer += c;
+            if (inputBuffer.length() > 50) inputBuffer = "";
+        }
+    }
+
+    // 2. ระบบความปลอดภัย (Heartbeat) : ถ้า Pi เงียบไป 1 วินาที ให้หยุดรถ
+    if (!emergencyMode && (millis() - last_cmd_received > HEARTBEAT_TIMEOUT)) {
+        stop();
+    }
+
+    // 3. ส่งข้อมูลกลับไปที่ Pi ทุกๆ 100ms (10Hz)
+    if (millis() - last_send >= 100) { 
+        float dt = (millis() - last_send) / 1000.0;
+        last_send = millis();
+
+        // อัปเดตข้อมูลเซนเซอร์
+        updateIMU(); 
+        
+        // --- ส่งข้อมูล IMU (I, Yaw, Pitch, Roll, AccX, AccY, AccZ) ---
+        // เราส่งเป็น องศา (Degree) ที่ผ่านการกรอง Complementary Filter แล้ว
+        Serial1.print("I,"); 
+        Serial1.print(imu_data.yaw, 2);   Serial1.print(",");
+        Serial1.print(imu_data.pitch, 2); Serial1.print(","); 
+        Serial1.print(imu_data.roll, 2);  Serial1.print(",");
+        Serial1.print(imu_data.accX, 2);  Serial1.print(",");
+        Serial1.print(imu_data.accY, 2);  Serial1.print(",");
+        Serial1.print(imu_data.accZ, 2);  Serial1.println(""); 
+
+        // --- ส่งข้อมูล Encoder (D, vL, vR, pL, pR) ---
+        float vL, vR; long pL, pR;
+        getEncoderData(vL, vR, pL, pR, dt);
+        Serial1.print("D,"); 
+        Serial1.print(vL, 2); Serial1.print(",");
+        Serial1.print(vR, 2); Serial1.print(","); 
+        Serial1.print(pL);    Serial1.print(",");
+        Serial1.println(pR);
+    }
+
+    // 4. แสดงสถานะ Manual/Auto ผ่าน LED
+    bool isManual = (digitalRead(PB14) == LOW);
+    digitalWrite(PC14, isManual ? LOW : HIGH);
+    digitalWrite(PC13, isManual ? HIGH : LOW);
+}

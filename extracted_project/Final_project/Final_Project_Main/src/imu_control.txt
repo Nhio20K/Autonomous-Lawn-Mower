@@ -1,0 +1,114 @@
+#include <Wire.h>
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+#include "imu_control.h"
+#include <math.h>
+
+Adafruit_MPU6050 mpu;
+OrientationData imu_data;
+
+unsigned long lastTime = 0;
+float ax_bias = 0, ay_bias = 0, az_bias = 0;
+float gx_bias = 0, gy_bias = 0, gz_bias = 0;
+const float alpha = 0.96; 
+
+void initIMU() {
+    // 1. บังคับขาและเปิด Internal Pull-up ให้สุด
+    pinMode(PB6, INPUT_PULLUP); 
+    pinMode(PB7, INPUT_PULLUP);
+    delay(100);
+
+    Wire.setSDA(PB7);
+    Wire.setSCL(PB6);
+    Wire.begin(); 
+    
+    // 2. บังคับความเร็วต่ำสุด (Standard Mode 100kHz) **สำคัญมาก**
+    Wire.setClock(100000); 
+    delay(500);
+
+    Serial1.println("--- MPU6050 Initializing (Addr 0x69) ---");
+
+    // 3. ใช้คำสั่งดั้งเดิมของ Wire เช็ค WhoAmI ก่อนเรียก Library
+    // เพื่อดูว่าชิปพร้อมคุยแบบ Data หรือยัง
+    bool chip_ready = false;
+    for (int i = 0; i < 5; i++) {
+        Wire.beginTransmission(0x69);
+        if (Wire.endTransmission() == 0) {
+            chip_ready = true;
+            break;
+        }
+        Serial1.print("Retry... ");
+        delay(500);
+    }
+
+    if (!chip_ready || !mpu.begin(0x69)) {
+        Serial1.println("\n[FATAL ERROR]: MPU6050 found by scanner but Library failed!");
+        Serial1.println("Reason: Weak I2C Signal (No Pull-up Resistors)");
+        Serial1.println("Fix 1: Move MPU-VCC to 5V (Bluepill Pin 5V)");
+        Serial1.println("Fix 2: Use SHORTER wires");
+        while (1) yield();
+    }
+
+    Serial1.println("MPU6050 Connected Successfully!");
+    
+    // ตั้งค่าต่อ...
+    mpu.setAccelerometerRange(MPU6050_RANGE_2_G);
+    mpu.setGyroRange(MPU6050_RANGE_250_DEG);
+    mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+
+    // 3. Calibration (หาค่า Bias ตอนนิ่ง)
+    Serial1.println("Calibrating... DO NOT MOVE THE ROBOT!");
+    int samples = 500;
+    for (int i = 0; i < samples; i++) {
+        sensors_event_t a, g, temp;
+        mpu.getEvent(&a, &g, &temp);
+        
+        ax_bias += a.acceleration.x;
+        ay_bias += a.acceleration.y;
+        az_bias += (a.acceleration.z - 9.81);
+        
+        gx_bias += g.gyro.x;
+        gy_bias += g.gyro.y;
+        gz_bias += g.gyro.z;
+        
+        delay(2);
+        if (i % 100 == 0) Serial1.print(".");
+    }
+    ax_bias /= samples; ay_bias /= samples; az_bias /= samples;
+    gx_bias /= samples; gy_bias /= samples; gz_bias /= samples;
+
+    Serial1.println("\nCalibration Done! IMU Ready.");
+    lastTime = millis();
+}
+
+void updateIMU() {
+    sensors_event_t a, g, temp;
+    if (!mpu.getEvent(&a, &g, &temp)) return;
+
+    unsigned long currentTime = millis();
+    float dt = (currentTime - lastTime) / 1000.0;
+    if (dt <= 0) dt = 0.001;
+    lastTime = currentTime;
+
+    // หักค่า Bias และแปลงหน่วย Gyro เป็น Degree
+    float ax = a.acceleration.x - ax_bias;
+    float ay = a.acceleration.y - ay_bias;
+    float az = a.acceleration.z - az_bias;
+    
+    float gx = (g.gyro.x - gx_bias) * 180 / M_PI; 
+    float gy = (g.gyro.y - gy_bias) * 180 / M_PI;
+    float gz = (g.gyro.z - gz_bias) * 180 / M_PI;
+
+    // Complementary Filter: ผสม Accel (นิ่ง) + Gyro (ไว)
+    float accPitch = atan2(ay, sqrt(ax * ax + az * az)) * 180 / M_PI;
+    float accRoll = atan2(-ax, sqrt(ay * ay + az * az)) * 180 / M_PI;
+
+    imu_data.pitch = alpha * (imu_data.pitch + gy * dt) + (1.0 - alpha) * accPitch;
+    imu_data.roll = alpha * (imu_data.roll + gx * dt) + (1.0 - alpha) * accRoll;
+    
+    // Yaw (หมุนรอบแกน Z) - ไหลตามปกติของ MPU6050
+    imu_data.yaw += gz * dt;
+
+    // เก็บค่าแรงสั่นสะเทือนไว้
+    imu_data.accX = ax; imu_data.accY = ay; imu_data.accZ = az;
+}
