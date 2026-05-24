@@ -32,7 +32,7 @@ colcon build --symlink-install --packages-select robot_bridge mower_bot_descript
 WS_DIR=$(pwd)
 SOURCE_CMD="source /opt/ros/humble/setup.bash && source ${WS_DIR}/install/setup.bash"
 
-echo "🚀 Opening 3 Tabs in a single terminal window..."
+echo "🚀 Opening Tabs in a single terminal window..."
 
 # เปิด 3 แท็บในหน้าต่างเดียว
 # แต่ละแท็บ sleep รอให้ตัวก่อนหน้าเปิดขึ้นก่อน
@@ -52,10 +52,10 @@ sleep 8
 gnome-terminal --tab --title="4. SAFETY & PLANNER" -- bash -c "$SOURCE_CMD && ros2 run robot_bridge geofence_and_planner --ros-args -p geofence_file:=${WS_DIR}/lawn_geofence.yaml; exec bash"
 sleep 5
 
- #6. Terminal สำหรับ Mowing Executor
-gnome-terminal --tab --title="6. MOWING" -- bash -c "$SOURCE_CMD && echo '🚜 รอรับพิกัดสนาม... เมื่อทุกอย่างพร้อมพิมพ์ go แล้วกด Enter' && ros2 run robot_bridge mow_zigzag; exec bash"
- #7. Terminal สำหรับ Dashboard (ดูสถานะภาพรวมแบบ Real-time)
-gnome-terminal --tab --title="7. DASHBOARD" -- bash -c "$SOURCE_CMD && ros2 run robot_bridge robot_dashboard; exec bash"
+ #5. Terminal สำหรับ Mowing Executor
+gnome-terminal --tab --title="5. MOWING" -- bash -c "$SOURCE_CMD && echo '🚜 รอรับพิกัดสนาม... เมื่อทุกอย่างพร้อมพิมพ์ go แล้วกด Enter' && ros2 run robot_bridge mow_zigzag; exec bash"
+ #6. Terminal สำหรับ Dashboard (ดูสถานะภาพรวมแบบ Real-time)
+gnome-terminal --tab --title="6. DASHBOARD" -- bash -c "$SOURCE_CMD && ros2 run robot_bridge robot_dashboard; exec bash"
 
 echo ""
 echo "✅ เริ่มระบบหุ่นยนต์คันจริงสำเร็จ!"
