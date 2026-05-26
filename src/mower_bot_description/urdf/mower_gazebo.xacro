@@ -24,9 +24,9 @@
             <right_joint>mid_right_wheel_joint</right_joint>
             <right_joint>rear_right_wheel_joint</right_joint>
 
-            <wheel_separation>0.6</wheel_separation>
-            <wheel_diameter>0.1</wheel_diameter>
-            <max_wheel_torque>100</max_wheel_torque>
+            <wheel_separation>0.5</wheel_separation>
+            <wheel_diameter>0.16</wheel_diameter>
+            <max_wheel_torque>30</max_wheel_torque>
             <max_wheel_acceleration>2.0</max_wheel_acceleration>
 
             <publish_odom>true</publish_odom>
@@ -125,7 +125,7 @@
                 <remapping>odom:=/ground_truth_odom</remapping>
             </ros>
             <update_rate>10.0</update_rate>
-            <body_name>base_link</body_name>
+            <body_name>base_footprint</body_name>
             <frame_name>map</frame_name>
             <xyz_offset>0 0 0</xyz_offset>
             <rpy_offset>0 0 0</rpy_offset>

@@ -1,14 +1,14 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://ros.org/wiki/xacro" >
 
-    <xacro:property name="base_mass" value="13.14"/>
-    <xacro:property name="base_x" value="0.76"/>
+    <xacro:property name="base_mass" value="37.0"/>
+    <xacro:property name="base_x" value="0.80"/>
     <xacro:property name="base_y" value="0.60"/>
-    <xacro:property name="base_z" value="0.14"/>
+    <xacro:property name="base_z" value="0.25"/>
 
     <xacro:property name="track_offset_y" value="0.25"/>
-    <xacro:property name="drive_wheel_radius" value="0.05"/> 
-    <xacro:property name="drive_wheel_width" value="0.05"/>
+    <xacro:property name="drive_wheel_radius" value="0.08"/> 
+    <xacro:property name="drive_wheel_width" value="0.015"/>
 
     <link name="base_footprint"/>
 
@@ -22,24 +22,23 @@
         <visual name="base_link">
             <origin xyz="0 0 0.1" rpy="0 0 0"/>
             <geometry>
-                <!-- ใช้ไฟล์ก้อนเดียวจบตามที่พี่ต้องการครับ -->
                 <mesh filename="package://mower_bot_description/meshes/Chassis_Center_link.STL" />
             </geometry>
             <material name="grey"><color rgba="0.5 0.5 0.5 1.0"/></material>
         </visual>
         <collision>
-            <origin xyz="0 0 0.17" rpy="0 0 0"/>
+            <origin xyz="0 0 0.225" rpy="0 0 0"/>
             <geometry>
                 <box size="${base_x} ${base_y} ${base_z}"/>
             </geometry>
         </collision>
         <inertial>
-            <origin xyz="0 0 0.1" rpy="0 0 0"/>
-            <mass value="13.14"/>
+            <origin xyz="0 0 0.12" rpy="0 0 0"/>
+            <mass value="${base_mass}"/>
             <inertia 
-                ixx="${(13.14/12) * (0.24*0.24 + 0.14*0.14)}" ixy="0" ixz="0"
-                iyy="${(13.14/12) * (0.50*0.50 + 0.14*0.14)}" iyz="0"
-                izz="${(13.14/12) * (0.50*0.50 + 0.24*0.24)}"
+                ixx="${(base_mass/12) * (base_y*base_y + base_z*base_z)}" ixy="0" ixz="0"
+                iyy="${(base_mass/12) * (base_x*base_x + base_z*base_z)}" iyz="0"
+                izz="${(base_mass/12) * (base_x*base_x + base_y*base_y)}"
             />
         </inertial>
     </link>
@@ -90,11 +89,11 @@
         </joint>
     </xacro:macro>
 
-    <xacro:macro name="passive_wheel" params="prefix location reflect_y offset_x">
+    <xacro:macro name="passive_wheel" params="prefix location reflect_y offset_x radius offset_z">
         <link name="${prefix}_${location}_wheel">
             <!--<visual>
                 <geometry>
-                    <cylinder radius="${drive_wheel_radius}" length="${drive_wheel_width}"/>
+                    <cylinder radius="${radius}" length="${drive_wheel_width}"/>
                 </geometry>
                 <material name="transparent">
                     <color rgba="0 0 1 0.3"/> 
@@ -102,13 +101,13 @@
             </visual>-->
             <collision>
                 <geometry>
-                    <sphere radius="${drive_wheel_radius}"/>
+                    <sphere radius="${radius}"/>
                 </geometry>
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.0</mu> 
-                            <mu2>0.0</mu2>
+                            <mu>0.5</mu> 
+                            <mu2>0.001</mu2>
                             <slip1>1.0</slip1>
                             <slip2>1.0</slip2>
                         </ode>
@@ -124,18 +123,19 @@
         <joint name="${prefix}_${location}_wheel_joint" type="continuous">
             <parent link="base_link"/>
             <child link="${prefix}_${location}_wheel"/>
-            <origin xyz="${offset_x} ${reflect_y * track_offset_y} -0.001" rpy="-1.5708 0 0"/>
+            <origin xyz="${offset_x} ${reflect_y * track_offset_y} ${offset_z}" rpy="-1.5708 0 0"/>
             <axis xyz="0 0 1"/>
+            <!--<dynamics damping="0.1" friction="0.05"/-->
         </joint>
     </xacro:macro>
     
-    <xacro:passive_wheel prefix="front" location="left"  reflect_y="1"  offset_x="0.5"/>
-    <xacro:passive_wheel prefix="mid"   location="left"  reflect_y="1"  offset_x="0.0"/>
-    <xacro:drive_wheel   prefix="rear"  location="left"  reflect_x="-1" reflect_y="1" offset_x="-0.5"/>
+    <xacro:passive_wheel prefix="front" location="left"  reflect_y="1"  offset_x="0.32" radius="0.08" offset_z="-0.001"/>
+    <xacro:passive_wheel prefix="mid"   location="left"  reflect_y="1"  offset_x="0.0"  radius="0.05" offset_z="-0.031"/>
+    <xacro:drive_wheel   prefix="rear"  location="left"  reflect_x="-1" reflect_y="1" offset_x="-0.32"/>
 
-    <xacro:passive_wheel prefix="front" location="right" reflect_y="-1" offset_x="0.5"/>
-    <xacro:passive_wheel prefix="mid"   location="right" reflect_y="-1" offset_x="0.0"/>
-    <xacro:drive_wheel   prefix="rear"  location="right" reflect_x="-1" reflect_y="-1" offset_x="-0.5"/>
+    <xacro:passive_wheel prefix="front" location="right" reflect_y="-1" offset_x="0.32" radius="0.08" offset_z="-0.001"/>
+    <xacro:passive_wheel prefix="mid"   location="right" reflect_y="-1" offset_x="0.0"  radius="0.05" offset_z="-0.031"/>
+    <xacro:drive_wheel   prefix="rear"  location="right" reflect_x="-1" reflect_y="-1" offset_x="-0.32"/>
 
     <xacro:macro name="visual_track" params="prefix reflect filename">
         <link name="${prefix}_track_visual">
